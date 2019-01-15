@@ -2,6 +2,7 @@ package com.nomi.merger;
 
 import android.Manifest;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
@@ -86,6 +87,7 @@ public class MainActivity
 
 
     String outputFilePath = null;
+
     //******************************************************
     private void requestFilePath(int pathId)
     //******************************************************
@@ -161,69 +163,94 @@ public class MainActivity
     }
 
     //******************************************************
+    public class CommandThread extends AsyncTask<String, Void, Boolean>
+    //******************************************************
+    {
+        @Override
+        protected Boolean doInBackground(String... strings)
+        {
+            val ffmpegInstance = MergerApplication.instance()
+                                                  .getFfmpeg();
+
+            try
+            {
+                Log.d(TAG, "Device-Version - - " + ffmpegInstance.getDeviceFFmpegVersion());
+                Log.d(TAG, "Library-Version - - " + ffmpegInstance.getLibraryFFmpegVersion());
+                ffmpegInstance.execute(strings, new ExecuteBinaryResponseHandler()
+                {
+                    @Override
+                    public void onProgress(String message)
+                    {
+                        super.onProgress(message);
+                        updateOutputText("onProgress \n" + message);
+                        Log.d(TAG, "onProgress - - " + message);
+                    }
+
+                    @Override
+                    public void onSuccess(String message)
+                    {
+                        super.onSuccess(message);
+                        Log.d(TAG, "OnSuccess - -");
+                        updateOutputText("Success \n" + message);
+                    }
+
+                    @Override
+                    public void onFailure(String message)
+                    {
+                        super.onFailure(message);
+                        Log.d(TAG, "onFailure - -" + message);
+                        updateOutputText("Failure \n" + message);
+                    }
+
+                    @Override
+                    public void onStart()
+                    {
+                        super.onStart();
+                        updateOutputText("onStart \n" + strings.toString());
+                        Log.d(TAG, "onStart");
+                    }
+
+                    @Override
+                    public void onFinish()
+                    {
+                        super.onFinish();
+                        Log.d(TAG, "onFinish");
+                    }
+                });
+            }
+            catch (FFmpegCommandAlreadyRunningException e)
+            {
+                updateOutputText("Exception \n" + e.getLocalizedMessage());
+                e.printStackTrace();
+            }
+
+            return false;
+        }
+
+
+        @Override
+        protected void onPostExecute(Boolean aBoolean)
+        {
+            super.onPostExecute(aBoolean);
+            Log.d(TAG, "onPostExecute "+aBoolean);
+        }
+    }
+
+    //******************************************************
     private void submitCommand()
     //******************************************************
     {
-        if (TextUtils.isEmpty(path1) || TextUtils.isEmpty(path2) || TextUtils.isEmpty(outputFilePath))
+        if (TextUtils.isEmpty(path1) || TextUtils.isEmpty(path2) || TextUtils.isEmpty(
+                outputFilePath))
             return;
+        //ffmpeg -y -i ad_sound/whistle.mp3 -i ad_sound/4s.wav -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" -c:a libmp3lame ad_sound/outputnow.mp3
+        String s = "-i " + path1 + " -i " + path2 + " -filter_complex amix=inputs=2:duration=longest " + outputFilePath;
 
-
-        // String comm = "-y -i "+path1+" -i "+path2+" -filter_complex [0:0][1:0] amix=inputs=2:duration=longest -c:a libmp3lame "+ad_sound/outputnow.mp3;
-        //String s = "-y -i "+ path1 +" -i " +path2+" -filter_complex [0:0][1:0] amix=inputs=2:duration=longest -c:a libmp3lame " + outputFilePath;
-        String s="-i "+path1+" -i "+path2+" -filter_complex [0:0][1:0]concat=n=2:v=0:a=1[out] -map [out] "+outputFilePath;
         Log.d(TAG, "Command -> " + s);
 
         String[] commandArray = s.split(" ");
-        val ffmpegInstance = MergerApplication.instance()
-                                              .getFfmpeg();
-        try
-        {
-            ffmpegInstance.execute(commandArray, new ExecuteBinaryResponseHandler()
-            {
-                @Override
-                public void onProgress(String message)
-                {
-                    super.onProgress(message);
-                    updateOutputText("onProgress \n"+message);
-                    Log.d(TAG, "onProgress - - "+message);
-                }
-
-                @Override
-                public void onSuccess(String message)
-                {
-                    super.onSuccess(message);
-                    Log.d(TAG, "OnSuccess - -");
-                    updateOutputText("Success \n"+message);
-                }
-
-                @Override
-                public void onFailure(String message)
-                {
-                    super.onFailure(message);
-                    Log.d(TAG, "onFailure - -" + message);
-                    updateOutputText("Failure \n"+message);
-                }
-
-                @Override
-                public void onStart()
-                {
-                    super.onStart();
-                    updateOutputText("onStart \n"+commandArray.toString());
-                    Log.d(TAG, "onStart");
-                }
-
-                @Override
-                public void onFinish()
-                {
-                    super.onFinish();
-                    Log.d(TAG, "onFinish");
-                }
-            });
-        }
-        catch (FFmpegCommandAlreadyRunningException e)
-        {
-            e.printStackTrace();
-        }
+        CommandThread thread = new CommandThread();
+        thread.execute(commandArray);
 
     }
 
