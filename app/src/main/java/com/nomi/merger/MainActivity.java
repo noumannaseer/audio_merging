@@ -2,13 +2,11 @@ package com.nomi.merger;
 
 import android.Manifest;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 
 import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
@@ -36,13 +34,14 @@ public class MainActivity
 
     TextView outputText;
     Button btnRun;
-    EditText commandInput;
     Button firstFileButton;
     TextView firstFilePath;
     TextView secondFilePath;
     Button secondFileButton;
     String path1;
     String path2;
+    String outputFilePath = null;
+    final int FILE_REQUEST_CODE = 100;
     private static final String TAG = "Merging";
     private final int FIRST_FILE = 1;
     private final int SECOND_FILE = FIRST_FILE + 1;
@@ -97,8 +96,7 @@ public class MainActivity
     }
 
 
-    String outputFilePath = null;
-    final int FILE_REQUEST_CODE = 100;
+
 
     //******************************************************
     private void requestFilePath(int pathId)
@@ -182,28 +180,6 @@ public class MainActivity
         outputText.setText(message);
     }
 
-    //******************************************************
-    public class CommandThread extends AsyncTask<String, Void, Boolean>
-    //******************************************************
-    {
-        boolean resultFlag = false;
-
-        @Override
-        protected Boolean doInBackground(String... strings)
-        {
-
-
-            return resultFlag;
-        }
-
-
-        @Override
-        protected void onPostExecute(Boolean aBoolean)
-        {
-            super.onPostExecute(aBoolean);
-            Log.d(TAG, "onPostExecute " + aBoolean);
-        }
-    }
 
     //******************************************************
     private void submitCommand()
