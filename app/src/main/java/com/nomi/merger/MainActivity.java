@@ -113,8 +113,8 @@ public class MainActivity
                                                                                         false)
                                                                                 .setShowVideos(
                                                                                         false)
-                                                                                .setSuffixes("mp3",
-                                                                                             "wav")
+//                                                                                .setSuffixes("mp3",
+//                                                                                             "wav","m4a")
                                                                                 .setMaxSelection(1)
                                                                                 .setSkipZeroSizeFiles(
                                                                                         true)
