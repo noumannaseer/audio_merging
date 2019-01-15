@@ -18,6 +18,7 @@ import com.jaiselrahman.filepicker.config.Configurations;
 import com.jaiselrahman.filepicker.model.MediaFile;
 import com.nabinbhandari.android.permissions.PermissionHandler;
 import com.nabinbhandari.android.permissions.Permissions;
+import com.nomi.merger.util.AndroidUtil;
 
 import java.util.ArrayList;
 
@@ -178,7 +179,6 @@ public class MainActivity
     private void updateOutputText(String message)
     //******************************************************
     {
-        outputText.clearComposingText();
         outputText.setText(message);
     }
 
@@ -245,6 +245,7 @@ public class MainActivity
                     super.onSuccess(message);
                     Log.d(TAG, "OnSuccess - -");
                     updateOutputText("Success \n" + message);
+                    AndroidUtil.toast(true,"File is saved at -> "+outputFilePath);
                 }
 
                 @Override
