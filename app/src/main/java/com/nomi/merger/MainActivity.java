@@ -13,11 +13,11 @@ import android.widget.TextView;
 
 import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.jaiselrahman.filepicker.activity.FilePickerActivity;
+import com.jaiselrahman.filepicker.config.Configurations;
+import com.jaiselrahman.filepicker.model.MediaFile;
 import com.nabinbhandari.android.permissions.PermissionHandler;
 import com.nabinbhandari.android.permissions.Permissions;
-import com.vincent.filepicker.Constant;
-import com.vincent.filepicker.activity.AudioPickActivity;
-import com.vincent.filepicker.filter.entity.AudioFile;
 
 import java.util.ArrayList;
 
@@ -76,7 +76,17 @@ public class MainActivity
         btnRun.setOnClickListener(v -> {
             submitCommand();
         });
-
+        Log.d(TAG, "Permission requested");
+        Permissions.check(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, null,
+                          new PermissionHandler()
+                          {
+                              @Override
+                              public void onGranted()
+                              {
+                                  Log.d(TAG, "Permission granted");
+                                  outputFilePath = getOutputFilePath("output.mp3");
+                              }
+                          });
         firstFileButton.setOnClickListener(v -> {
             requestFilePath(FIRST_FILE);
         });
@@ -87,26 +97,30 @@ public class MainActivity
 
 
     String outputFilePath = null;
+    final int FILE_REQUEST_CODE = 100;
 
     //******************************************************
     private void requestFilePath(int pathId)
     //******************************************************
     {
-        Permissions.check(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, null,
-                          new PermissionHandler()
-                          {
-                              @Override
-                              public void onGranted()
-                              {
-                                  outputFilePath = getOutputFilePath("output.mp3");
-                              }
-                          });
-
         selectedPath = pathId;
-        Intent intent3 = new Intent(this, AudioPickActivity.class);
-        intent3.putExtra(AudioPickActivity.IS_NEED_RECORDER, true);
-        intent3.putExtra(Constant.MAX_NUMBER, 9);
-        startActivityForResult(intent3, Constant.REQUEST_CODE_PICK_AUDIO);
+        Intent intent = new Intent(this, FilePickerActivity.class);
+        intent.putExtra(FilePickerActivity.CONFIGS, new Configurations.Builder().setShowAudios(true)
+                                                                                .setCheckPermission(
+                                                                                        true)
+                                                                                .enableImageCapture(
+                                                                                        true)
+                                                                                .setShowImages(
+                                                                                        false)
+                                                                                .setShowVideos(
+                                                                                        false)
+                                                                                .setSuffixes("mp3",
+                                                                                             "wav")
+                                                                                .setMaxSelection(1)
+                                                                                .setSkipZeroSizeFiles(
+                                                                                        true)
+                                                                                .build());
+        startActivityForResult(intent, FILE_REQUEST_CODE);
     }
 
     //******************************************************
@@ -117,29 +131,35 @@ public class MainActivity
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK)
         {
-            ArrayList<AudioFile> list = data.getParcelableArrayListExtra(
-                    Constant.RESULT_PICK_AUDIO);
-            if (list != null && list.size() > 0)
+            switch (requestCode)
             {
-                if (selectedPath == FIRST_FILE)
+            case FILE_REQUEST_CODE:
+                ArrayList<MediaFile> list = data.getParcelableArrayListExtra(
+                        FilePickerActivity.MEDIA_FILES);
+                if (list != null && list.size() > 0)
                 {
-                    firstFilePath.setText(list.get(0)
-                                              .getPath());
-                    path1 = list.get(0)
-                                .getPath();
-                    selectedPath = -1;
+                    if (selectedPath == FIRST_FILE)
+                    {
+                        firstFilePath.setText(list.get(0)
+                                                  .getPath());
+                        path1 = list.get(0)
+                                    .getPath();
+                        selectedPath = -1;
+                    }
+
+                    else
+                    {
+                        path2 = list.get(0)
+                                    .getPath();
+                        selectedPath = -1;
+                        secondFilePath.setText(list.get(0)
+                                                   .getPath());
+                    }
                 }
 
-                else
-                {
-                    path2 = list.get(0)
-                                .getPath();
-                    selectedPath = -1;
-                    secondFilePath.setText(list.get(0)
-                                               .getPath());
-                }
-
+                break;
             }
+
         }
 
     }
@@ -166,65 +186,14 @@ public class MainActivity
     public class CommandThread extends AsyncTask<String, Void, Boolean>
     //******************************************************
     {
+        boolean resultFlag = false;
+
         @Override
         protected Boolean doInBackground(String... strings)
         {
-            val ffmpegInstance = MergerApplication.instance()
-                                                  .getFfmpeg();
 
-            try
-            {
-                Log.d(TAG, "Device-Version - - " + ffmpegInstance.getDeviceFFmpegVersion());
-                Log.d(TAG, "Library-Version - - " + ffmpegInstance.getLibraryFFmpegVersion());
-                ffmpegInstance.execute(strings, new ExecuteBinaryResponseHandler()
-                {
-                    @Override
-                    public void onProgress(String message)
-                    {
-                        super.onProgress(message);
-                        updateOutputText("onProgress \n" + message);
-                        Log.d(TAG, "onProgress - - " + message);
-                    }
 
-                    @Override
-                    public void onSuccess(String message)
-                    {
-                        super.onSuccess(message);
-                        Log.d(TAG, "OnSuccess - -");
-                        updateOutputText("Success \n" + message);
-                    }
-
-                    @Override
-                    public void onFailure(String message)
-                    {
-                        super.onFailure(message);
-                        Log.d(TAG, "onFailure - -" + message);
-                        updateOutputText("Failure \n" + message);
-                    }
-
-                    @Override
-                    public void onStart()
-                    {
-                        super.onStart();
-                        updateOutputText("onStart \n" + strings.toString());
-                        Log.d(TAG, "onStart");
-                    }
-
-                    @Override
-                    public void onFinish()
-                    {
-                        super.onFinish();
-                        Log.d(TAG, "onFinish");
-                    }
-                });
-            }
-            catch (FFmpegCommandAlreadyRunningException e)
-            {
-                updateOutputText("Exception \n" + e.getLocalizedMessage());
-                e.printStackTrace();
-            }
-
-            return false;
+            return resultFlag;
         }
 
 
@@ -232,7 +201,7 @@ public class MainActivity
         protected void onPostExecute(Boolean aBoolean)
         {
             super.onPostExecute(aBoolean);
-            Log.d(TAG, "onPostExecute "+aBoolean);
+            Log.d(TAG, "onPostExecute " + aBoolean);
         }
     }
 
@@ -240,17 +209,73 @@ public class MainActivity
     private void submitCommand()
     //******************************************************
     {
-        if (TextUtils.isEmpty(path1) || TextUtils.isEmpty(path2) || TextUtils.isEmpty(
-                outputFilePath))
+        if (TextUtils.isEmpty(path1) || TextUtils.isEmpty(path2) || TextUtils.isEmpty(outputFilePath))
             return;
-        //ffmpeg -y -i ad_sound/whistle.mp3 -i ad_sound/4s.wav -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" -c:a libmp3lame ad_sound/outputnow.mp3
-        String s = "-i " + path1 + " -i " + path2 + " -filter_complex amix=inputs=2:duration=longest " + outputFilePath;
+
+        String s = "-y -i " + path1 + " -i " + path2 + " -filter_complex amix=inputs=2:duration=longest " + outputFilePath;
 
         Log.d(TAG, "Command -> " + s);
-
         String[] commandArray = s.split(" ");
-        CommandThread thread = new CommandThread();
-        thread.execute(commandArray);
+        val ffmpegInstance = MergerApplication.instance().getFfmpeg();
+
+
+        try
+        {
+            if (ffmpegInstance.isFFmpegCommandRunning())
+            {
+                ffmpegInstance.killRunningProcesses();
+                Log.d(TAG, "Command Already running");
+                return;
+            }
+            Log.d(TAG, "Device-Version - - " + ffmpegInstance.getDeviceFFmpegVersion());
+            Log.d(TAG, "Library-Version - - " + ffmpegInstance.getLibraryFFmpegVersion());
+            ffmpegInstance.execute(commandArray, new ExecuteBinaryResponseHandler()
+            {
+                @Override
+                public void onProgress(String message)
+                {
+                    super.onProgress(message);
+                    updateOutputText("onProgress \n" + message);
+                    Log.d(TAG, "onProgress - - " + message);
+                }
+
+                @Override
+                public void onSuccess(String message)
+                {
+                    super.onSuccess(message);
+                    Log.d(TAG, "OnSuccess - -");
+                    updateOutputText("Success \n" + message);
+                }
+
+                @Override
+                public void onFailure(String message)
+                {
+                    super.onFailure(message);
+                    Log.d(TAG, "onFailure - -" + message);
+                    updateOutputText("Failure \n" + message);
+                }
+
+                @Override
+                public void onStart()
+                {
+                    super.onStart();
+                    updateOutputText("onStart \n" + commandArray.toString());
+                    Log.d(TAG, "onStart");
+                }
+
+                @Override
+                public void onFinish()
+                {
+                    super.onFinish();
+                    Log.d(TAG, "onFinish");
+                }
+            });
+        }
+        catch (FFmpegCommandAlreadyRunningException e)
+        {
+            updateOutputText("Exception \n" + e.getLocalizedMessage());
+            e.printStackTrace();
+        }
 
     }
 
